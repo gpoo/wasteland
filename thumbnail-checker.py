@@ -22,12 +22,6 @@ class ThumbnailChecker:
 
 		self.window = xml.get_widget('window')
 		treeview = xml.get_widget('treeview')
-		self.non_fd_count = xml.get_widget('non_fd_count')
-		self.non_fd_size = xml.get_widget('non_fd_size')
-		self.invalid_count = xml.get_widget('invalid_count')
-		self.invalid_size = xml.get_widget('invalid_size')
-		self.orphan_count = xml.get_widget('orphan_count')
-		self.orphan_size = xml.get_widget('orphan_size')
 		self.progressbar = xml.get_widget('progressbar')
 		self.progress = xml.get_widget('progress')
 		self.button_start = xml.get_widget('button_start')
@@ -82,6 +76,7 @@ class ThumbnailChecker:
 		non_fd_iter = self.model.append(None, ["No Free Desktop compliant", '0'])
 
 		rootdir = os.path.expanduser('~/.thumbnails')
+		homedir = os.path.expanduser('~')
 		for root, dirs, files in os.walk(rootdir):
 			i = 0.0
 
@@ -94,6 +89,7 @@ class ThumbnailChecker:
 				i = i + 1.0
 				uri = None
 				filename = join(root, name)
+				shortname = filename.replace(homedir, '~')
 
 				self.progressbar.set_fraction(i / len(files))
 				text = "%d of %d" % (i, len(files))
@@ -123,21 +119,22 @@ class ThumbnailChecker:
 
 					str_size = locale.format("%d", external_size, grouping=True)
 					self.model.set(external_iter, 1, str_size)
+					self.model.set(external_iter, 0, 
+					               "Orphans and/or Externals [%d]" % external_count)
 
 				elif len(local_path) and not os.path.lexists(local_path):
 					# orphan thumbnail
 					size = getsize(filename)
 					orphan_size += size
 					orphan_count += 1
-
-					self.orphan_count.set_text(str(orphan_count))
-					self.orphan_size.set_text(str(orphan_size))
+					shortname = local_path.replace(homedir, '~')
 
 					str_size = locale.format("%d", size, grouping=True)
-					self.model.append(orphan_iter, [local_path, str_size])
+					self.model.append(orphan_iter, [shortname, str_size])
 
 					str_size = locale.format("%d", orphan_size, grouping=True)
 					self.model.set(orphan_iter, 1, str_size)
+					self.model.set(orphan_iter, 0, "Orphans [%d]" % orphan_count)
 
 				elif uri is None:
 					# pixbuf is ok, but no FD compliant.
@@ -145,29 +142,28 @@ class ThumbnailChecker:
 					non_fd_size += size
 					non_fd_count += 1
 
-					self.non_fd_count.set_text(str(non_fd_count))
-					self.non_fd_size.set_text(str(non_fd_size))
-
 					str_size = locale.format("%d", size, grouping=True)
-					self.model.append(non_fd_iter, [filename, str_size])
+					self.model.append(non_fd_iter, [shortname, str_size])
 
 					str_size = locale.format("%d", non_fd_size, grouping=True)
 					self.model.set(non_fd_iter, 1, str_size)
+					self.model.set(non_fd_iter, 0, 
+					               "No Free Desktop compliant [%d]" % non_fd_count)
 
 				elif len(uri) == 0:
 					# thumbnail is not a valid pixbuf
 					size = getsize(filename)
 					invalid_size += size
 					invalid_count += 1
-
-					self.invalid_count.set_text(str(invalid_count))
-					self.invalid_size.set_text(str(invalid_size))
+					shortname = filename.replace(homedir, '~')
 
 					str_size = locale.format("%d", size, grouping=True)
-					self.model.append(invalid_iter, [filename, str_size])
+					self.model.append(invalid_iter, [shortname, str_size])
 
 					str_size = locale.format("%d", invalid_size, grouping=True)
 					self.model.set(invalid_iter, 1, str_size)
+					self.model.set(invalid_iter, 0, 
+					               "Invalid (broken images) [%d]" % invalid_count)
 
 				collect()
 				yield True

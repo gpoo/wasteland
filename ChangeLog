@@ -1,5 +1,13 @@
 2006-08-23  German Poo-Caaman~o  <gpoo@ubiobio.cl>
 
+	* thumbnail-checker.glade: Deleted summary labels in favour of summary
+	  in treeview's cell.
+	* thumbnail-checker.py: 
+	  - Use of '~' instead of expanded $HOME when it is possible.  
+	  - Added summary in treeview's cell.
+
+2006-08-23  German Poo-Caaman~o  <gpoo@ubiobio.cl>
+
 	* Functional version of estimator, computes amount and size of useless 
 	  thumbnails (orphans, brokens, no free desktop compliants)
 	* GUI more responsive through yield instead of gtk.main_iterarion()
