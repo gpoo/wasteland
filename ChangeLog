@@ -1,0 +1,7 @@
+2006-08-23  German Poo-Caaman~o  <gpoo@ubiobio.cl>
+
+	* Functional version of estimator, computes amount and size of useless 
+	  thumbnails (orphans, brokens, no free desktop compliants)
+	* GUI more responsive through yield instead of gtk.main_iterarion()
+	* Added ChangeLog
+	
