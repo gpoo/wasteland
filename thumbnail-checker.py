@@ -1,27 +1,32 @@
 #!/usr/bin/env python
 
+from gnomevfs import get_local_path_from_uri
+from gc import collect
+from os.path import join, getsize
+
 import gtk
 import gtk.gdk
 import gnome.ui
-import gnomevfs
+import gobject
 import os
-import gc
+import gtk.glade
 
-filename = "/home/gpoo/.thumbnails/large/007ec399237ea661fd3f699e99aa7908.png"
-
-class ThumbnailCheck:
+class ThumbnailChecker:
 	def __init__(self):
+		xml = gtk.glade.XML('thumbnail-checker.glade', None, None)
 		self.model = gtk.ListStore(str, str, int)
 
-		self.window = gtk.Window()
-		self.window.set_default_size(640, 480)
-		self.window.connect('delete_event', gtk.main_quit, None)
+		self.window = xml.get_widget('window')
+		treeview = xml.get_widget('treeview')
+		self.non_fd_count = xml.get_widget('non_fd_count')
+		self.non_fd_size = xml.get_widget('non_fd_size')
+		self.invalid_count = xml.get_widget('invalid_count')
+		self.invalid_size = xml.get_widget('invalid_size')
+		self.orphan_count = xml.get_widget('orphan_count')
+		self.orphan_size = xml.get_widget('orphan_size')
+		self.progressbar = xml.get_widget('progressbar')
+		xml.signal_autoconnect(self)
 
-		sw = gtk.ScrolledWindow()
-		sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
-
-		treeview = gtk.TreeView()
-		treeview.set_rules_hint(True)
 		treeview.set_search_column(1)
 		treeview.set_model(self.model)
 
@@ -39,84 +44,94 @@ class ThumbnailCheck:
 		column = gtk.TreeViewColumn("Size", renderer, text=2)
 		treeview.append_column(column)
 
-		sw.add(treeview)
-
-		button = gtk.Button(label='Start')
-		button.connect("clicked", self.on_button_clicked, None)
-
-		vbox = gtk.VBox()
-		vbox.set_spacing(12)
-		vbox.set_border_width(6)
-
-		vbox.pack_start(sw)
-		vbox.pack_end(button, expand=False)
-
-		self.window.add(vbox)
-
-	def is_valid(self, pixbuf):
-		uri = pixbuf.get_option('tEXt::Thumb::URI')
-		local_filename = gnomevfs.get_local_path_from_uri(uri)
-
-		try:
-			os.stat(local_filename)
-			return True
-		except:
-			return False
-
 	def show(self):
 		self.window.show_all()
 
-	def on_button_clicked(self, button, *args):
-		button.set_sensitive(False)
+	def on_quit(self, *args):
+		gtk.main_quit()
+
+	def on_button_start_clicked(self, button, *args):
+		self.work = True
+		button.set_sensitive(True)
 		self.walk()
 
 	def walk(self, *args):
-		#self.model.clear()
-
-		from os.path import join, getsize
+		non_fd = { 'size': 0, 'count': 0 }
+		non_thumb = { 'size': 0, 'count': 0 }
+		orphan_thumb = { 'size': 0, 'count': 0 }
+		space_wasted = 0
+		
 		rootdir = os.path.expanduser('~/.thumbnails')
 		for root, dirs, files in os.walk(rootdir):
-			total_size = 0
 			#print sum(getsize(join(root, name)) for name in files),
 
+			print 'root:', root, '# files', len(files)
+			text = "%d of %d" % (0, len(files))
+			self.progressbar.set_text(text)
+			i = 0.0
+
 			for name in files:
+				i = i + 1.0
 				filename = join(root, name)
 				uri = None
-				size = 0
+
+				self.progressbar.set_fraction(i / len(files))
+				text = "%d of %d" % (i, len(files))
+				self.progressbar.set_text(text)
 
 				try:
 					pixbuf = gtk.gdk.pixbuf_new_from_file(filename)
 					uri = pixbuf.get_option('tEXt::Thumb::URI')
 				except:
-					#print "Pixbuf Error", filename
-					uri = None
+					# Broken thumbnail
+					uri = ''
 
 				try:
-					local_path = gnomevfs.get_local_path_from_uri(uri)
+					local_path = get_local_path_from_uri(uri)
 				except:
+					print 'gnomevfs', uri
 					local_path = ''
 
-				if not uri:
+				if len(local_path) and not os.path.lexists(local_path):
+					# orphan thumbnail
+					size = getsize(filename)
+					orphan_thumb['size'] += size
+					orphan_thumb['count'] += 1
+
+					print 'Orphaner!!!', local_path
+					self.orphan_count.set_text(str(orphan_thumb['count']))
+					self.orphan_size.set_text(str(orphan_thumb['size']))
+
+					self.model.append(['Orphan', local_path, size])
+				elif uri is None:
+					# pixbuf is ok, but no FD compliant.
 					#print "==> %s has not URI: %s" % (filename, uri)
 					size = getsize(filename)
-					self.model.append(['No FD', filename, size])
-				elif local_path and not os.path.lexists(local_path):
-					size = getsize(filename)
-					#print "No existe: %s" % local_path
-					self.model.append(['No file', local_path, size])
+					non_fd['size'] += size
+					non_fd['count'] += 1
 
-				total_size += size
+					self.non_fd_count.set_text(str(non_fd['count']))
+					self.non_fd_size.set_text(str(non_fd['size']))
+
+					self.model.append(['Non FD', filename, size])
+				elif len(uri) == 0:
+					# thumbnail is not a valid pixbuf
+					size = getsize(filename)
+					non_thumb['size'] += size
+					non_thumb['count'] += 1
+
+					self.invalid_count.set_text(str(non_thumb['count']))
+					self.invalid_size.set_text(str(non_thumb['size']))
+
+					self.model.append(['Invalid', filename, size])
 
 				while gtk.events_pending():
-					gtk.main_iteration(False)
+					gtk.main_iteration()
 
-				gc.collect()
-
-			print "Total size of %s: %s in %d files" % (root, total_size, len(files))
+				collect()
 
 if __name__ == "__main__":
-	c = ThumbnailCheck()
-
-	c.show()
+	checker = ThumbnailChecker()
+	checker.show()
 
 	gtk.main()
