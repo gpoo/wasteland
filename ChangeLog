@@ -1,3 +1,7 @@
+2006-09-08  German Poo-Caaman~o  <gpoo@ubiobio.cl>
+
+	* .hgignore: Added itself.
+
 2006-08-23  German Poo-Caaman~o  <gpoo@ubiobio.cl>
 
 	* thumbnail-checker.glade: Deleted summary labels in favour of summary
