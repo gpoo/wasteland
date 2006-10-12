@@ -10,9 +10,34 @@ import gnome.ui
 import gobject
 import os
 import gtk.glade
-import locale
+import pango
+
+def bytes_to_string(size):
+	"""Return a number in a easier way to read"""
+
+	giga = 1024 * 1024 * 1024
+	mega = 1024 * 1024
+	kilo = 1024
+
+	if size >= giga:
+		str = "%.2f GiB" % (float(size) / float(giga))
+	elif size >= mega:
+		str = "%.2f MiB" % (float(size) / float(mega))
+	elif size >= kilo:
+		str = "%.2f KiB" % (float(size) / float(kilo))
+	else:
+		str = "%d bytes" % size
+
+	return str
+
 
 class ThumbnailChecker:
+	OK = 0
+	EXTERNAL = 1
+	ORPHAN = 2
+	NON_FD = 3
+	INVALID = 4
+
 	def __init__(self):
 		self.id = None
 		self.first_time = True
@@ -32,7 +57,9 @@ class ThumbnailChecker:
 		treeview.set_model(self.model)
 
 		renderer = gtk.CellRendererText()
-		column = gtk.TreeViewColumn("File name or Thumbnail file", renderer, text=0)
+		renderer.set_property("ellipsize", pango.ELLIPSIZE_MIDDLE)
+		column = gtk.TreeViewColumn("File name or Thumbnail file", 
+		                            renderer, text=0)
 		column.set_resizable(True)
 		column.set_expand(True)
 		treeview.append_column(column)
@@ -65,15 +92,18 @@ class ThumbnailChecker:
 		self.id = gobject.idle_add(self.task.next)
 
 	def walk(self, *args):
-		(invalid_size, invalid_count) = (0, 0)
-		(non_fd_size, non_fd_count) = (0, 0)
-		(orphan_size, orphan_count) = (0, 0)
-		(external_size, external_count) = (0, 0)
+		(self.invalid_size, self.invalid_count) = (0, 0)
+		(self.non_fd_size, self.non_fd_count) = (0, 0)
+		(self.orphan_size, self.orphan_count) = (0, 0)
+		(self.external_size, self.external_count) = (0, 0)
 		
-		orphan_iter = self.model.append(None, ["Orphans", '0'])
-		external_iter = self.model.append(None, ["Orphans and/or Externals", '0'])
-		invalid_iter = self.model.append(None, ["Invalid (broken image)", '0'])
-		non_fd_iter = self.model.append(None, ["No Free Desktop compliant", '0'])
+		self.orphan_iter = self.model.append(None, ["Orphans", '0'])
+		self.external_iter = self.model.append(None, 
+		                               ["Orphans and/or Externals", '0'])
+		self.invalid_iter = self.model.append(None, 
+		                               ["Invalid (broken image)", '0'])
+		self.non_fd_iter = self.model.append(None, 
+		                               ["No Free Desktop compliant", '0'])
 
 		rootdir = os.path.expanduser('~/.thumbnails')
 		homedir = os.path.expanduser('~')
@@ -89,81 +119,26 @@ class ThumbnailChecker:
 				i = i + 1.0
 				uri = None
 				filename = join(root, name)
-				shortname = filename.replace(homedir, '~')
 
 				self.progressbar.set_fraction(i / len(files))
-				text = "%d of %d" % (i, len(files))
 				self.progressbar.set_text(text)
 
-				try:
-					pixbuf = gtk.gdk.pixbuf_new_from_file(filename)
-					uri = pixbuf.get_option('tEXt::Thumb::URI')
-				except:
-					# Broken thumbnail
-					uri = ''
+				(result, resource) = self.verify_thumbnail(filename)
+				if resource.startswith(homedir):
+					resource = resource.replace(homedir, '~')
 
-				try:
-					local_path = get_local_path_from_uri(uri)
-				except:
-					# External resource or invalid uri
-					local_path = ''
-
-				if len(local_path) == 0 and uri is not None and len(uri):
-					# external resource (vfs method and/or orphan)
-					size = getsize(filename)
-					external_size += size
-					external_count += 1
-
-					str_size = locale.format("%d", size, grouping=True)
-					self.model.append(external_iter, [uri, str_size])
-
-					str_size = locale.format("%d", external_size, grouping=True)
-					self.model.set(external_iter, 1, str_size)
-					self.model.set(external_iter, 0, 
-					               "Orphans and/or Externals [%d]" % external_count)
-
-				elif len(local_path) and not os.path.lexists(local_path):
-					# orphan thumbnail
-					size = getsize(filename)
-					orphan_size += size
-					orphan_count += 1
-					shortname = local_path.replace(homedir, '~')
-
-					str_size = locale.format("%d", size, grouping=True)
-					self.model.append(orphan_iter, [shortname, str_size])
-
-					str_size = locale.format("%d", orphan_size, grouping=True)
-					self.model.set(orphan_iter, 1, str_size)
-					self.model.set(orphan_iter, 0, "Orphans [%d]" % orphan_count)
-
-				elif uri is None:
-					# pixbuf is ok, but no FD compliant.
-					size = getsize(filename)
-					non_fd_size += size
-					non_fd_count += 1
-
-					str_size = locale.format("%d", size, grouping=True)
-					self.model.append(non_fd_iter, [shortname, str_size])
-
-					str_size = locale.format("%d", non_fd_size, grouping=True)
-					self.model.set(non_fd_iter, 1, str_size)
-					self.model.set(non_fd_iter, 0, 
-					               "No Free Desktop compliant [%d]" % non_fd_count)
-
-				elif len(uri) == 0:
-					# thumbnail is not a valid pixbuf
-					size = getsize(filename)
-					invalid_size += size
-					invalid_count += 1
-					shortname = filename.replace(homedir, '~')
-
-					str_size = locale.format("%d", size, grouping=True)
-					self.model.append(invalid_iter, [shortname, str_size])
-
-					str_size = locale.format("%d", invalid_size, grouping=True)
-					self.model.set(invalid_iter, 1, str_size)
-					self.model.set(invalid_iter, 0, 
-					               "Invalid (broken images) [%d]" % invalid_count)
+				if result == self.EXTERNAL:
+					self.compute(filename, 'external', resource, 
+					             "Orphans and/or Externals [%d]")
+				elif result == self.ORPHAN:
+					self.compute(filename, 'orphan', resource,
+					             "Orphans [%d]")
+				elif result == self.NON_FD:
+					self.compute(filename, 'non_fd', resource, 
+					             "No Free Desktop compliant [%d]")
+				elif result == self.INVALID:
+					self.compute(filename, 'invalid', resource, 
+					             "Invalid (broken images) [%d]")
 
 				collect()
 				yield True
@@ -176,10 +151,50 @@ class ThumbnailChecker:
 		self.progress.set_text('')
 		yield False
 
-if __name__ == "__main__":
-	(lang_code, encoding) = locale.getdefaultlocale()
-	locale.setlocale(locale.LC_ALL, lang_code)
+	def verify_thumbnail(self, filename):
+		try:
+			pixbuf = gtk.gdk.pixbuf_new_from_file(filename)
+			uri = pixbuf.get_option('tEXt::Thumb::URI')
+		except:
+			# Broken thumbnail
+			uri = ''
 
+		try:
+			path = get_local_path_from_uri(uri)
+		except:
+			# External resource or invalid uri
+			path = ''
+
+		if len(path) == 0 and uri is not None and len(uri):
+			return (self.EXTERNAL, uri)
+		if len(path) and not os.path.lexists(path):
+			return (self.ORPHAN, filename)
+		if uri is None:
+			return (self.NON_FD, filename)
+		if len(uri) == 0:
+			return (self.INVALID, filename)
+		return (self.OK, filename)
+
+	def compute(self, filename, item, element, text):
+		sum_size = getattr(self, item + '_size')
+		counter  = getattr(self, item + '_count')
+		iter = getattr(self, item + '_iter')
+		
+		size = getsize(filename)
+		sum_size += size
+		counter += 1
+
+		setattr(self, item + '_size', sum_size)
+		setattr(self, item + '_count', counter)
+
+		str_size = bytes_to_string(size)
+		self.model.append(iter, [element, str_size])
+
+		str_size = bytes_to_string(sum_size)
+		self.model.set(iter, 1, str_size)
+		self.model.set(iter, 0, text % counter)
+
+if __name__ == "__main__":
 	checker = ThumbnailChecker()
 	checker.show()
 

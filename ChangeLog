@@ -1,3 +1,11 @@
+2006-10-12  German Poo-Caaman~o  <gpoo@ubiobio.cl>
+
+	* thumbnail-checker.py: 
+	  - Added the function bytes_to_string to show more readable 
+	    numbers.
+	  - Added the method verify_thumbnail to make all tests.
+	  - Added the method compute to make the code shorter.
+
 2006-09-08  German Poo-Caaman~o  <gpoo@ubiobio.cl>
 
 	* .hgignore: Added itself.
