@@ -106,6 +106,16 @@
 	  <property name="layout_style">GTK_BUTTONBOX_END</property>
 	  <property name="spacing">6</property>
 
+          <child>
+             <widget class="GtkButton" id="button_delete">
+               <property name="visible">True</property>
+               <property name="sensitive">False</property>
+               <property name="label" translatable="yes">gtk-delete</property>
+               <property name="use_stock">True</property>
+               <signal name="clicked" handler="on_button_delete_clicked"/>
+             </widget>
+          </child>
+
 	  <child>
 	    <widget class="GtkButton" id="button_stop">
 	      <property name="visible">True</property>

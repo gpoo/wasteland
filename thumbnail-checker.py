@@ -43,18 +43,22 @@ class ThumbnailChecker:
 		self.first_time = True
 
 		xml = gtk.glade.XML('thumbnail-checker.glade', None, None)
-		self.model = gtk.TreeStore(str, str)
+		self.model = gtk.TreeStore(str, str, str)
 
 		self.window = xml.get_widget('window')
-		treeview = xml.get_widget('treeview')
+		self.treeview = xml.get_widget('treeview')
 		self.progressbar = xml.get_widget('progressbar')
 		self.progress = xml.get_widget('progress')
+		self.button_delete = xml.get_widget ('button_delete')
 		self.button_start = xml.get_widget('button_start')
 		self.button_stop = xml.get_widget('button_stop')
 		xml.signal_autoconnect(self)
 
-		treeview.set_search_column(1)
-		treeview.set_model(self.model)
+		self.treeview.set_search_column(1)
+		self.treeview.set_model(self.model)
+		selection = self.treeview.get_selection()
+		selection.set_mode (gtk.SELECTION_MULTIPLE)
+		selection.connect ("changed", self.on_selection_changed)
 
 		renderer = gtk.CellRendererText()
 		renderer.set_property("ellipsize", pango.ELLIPSIZE_MIDDLE)
@@ -62,7 +66,7 @@ class ThumbnailChecker:
 		                            renderer, text=0)
 		column.set_resizable(True)
 		column.set_expand(True)
-		treeview.append_column(column)
+		self.treeview.append_column(column)
 
 		renderer = gtk.CellRendererText()
 		renderer.set_property('xalign', 1.0)
@@ -70,13 +74,17 @@ class ThumbnailChecker:
 		column.set_resizable(True)
 		column.set_min_width(80)
 		column.set_resizable(True)
-		treeview.append_column(column)
+		self.treeview.append_column(column)
 
 	def show(self):
 		self.window.show_all()
 
 	def on_quit(self, *args):
 		gtk.main_quit()
+
+	def on_button_delete_clicked(self, button, *args):
+		selection = self.treeview.get_selection ()
+		selection.selected_foreach (self.delete_selected_thumbnail)
 
 	def on_button_stop_clicked(self, button, *args):
 		gobject.source_remove(self.id)
@@ -96,13 +104,13 @@ class ThumbnailChecker:
 		(self.non_fd_size, self.non_fd_count) = (0, 0)
 		(self.orphan_size, self.orphan_count) = (0, 0)
 		(self.external_size, self.external_count) = (0, 0)
-		
+
 		self.orphan_iter = self.model.append(None, ["Orphans", '0'])
-		self.external_iter = self.model.append(None, 
+		self.external_iter = self.model.append(None,
 		                               ["Orphans and/or Externals", '0'])
-		self.invalid_iter = self.model.append(None, 
+		self.invalid_iter = self.model.append(None,
 		                               ["Invalid (broken image)", '0'])
-		self.non_fd_iter = self.model.append(None, 
+		self.non_fd_iter = self.model.append(None,
 		                               ["No Free Desktop compliant", '0'])
 
 		rootdir = os.path.expanduser('~/.thumbnails')
@@ -142,11 +150,11 @@ class ThumbnailChecker:
 
 				collect()
 				yield True
-
+				
 			text = "%s done.  Trying the next one..." % root
 			self.progress.set_text(text)
 			yield True
-
+			
 		self.progressbar.set_text('Done')
 		self.progress.set_text('')
 		yield False
@@ -194,6 +202,14 @@ class ThumbnailChecker:
 		self.model.set(iter, 1, str_size)
 		self.model.set(iter, 0, text % counter)
 
+	def delete_selected_thumbnail (self, treemodel, path, iter):
+		file = treemodel.get (iter, 2) [0]
+		os.unlink (os.path.expanduser (file))
+
+	def on_selection_changed (self, selection):
+		has_selection = (selection.count_selected_rows () != 0)
+		self.button_delete.set_sensitive (has_selection)
+	
 if __name__ == "__main__":
 	checker = ThumbnailChecker()
 	checker.show()
