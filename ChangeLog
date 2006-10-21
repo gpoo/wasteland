@@ -1,5 +1,11 @@
 2006-10-20  German Poo-Caaman~o  <gpoo@ubiobio.cl>
 
+	* thumbnail-checker.py: Updated the treeview when a file
+	  is deleted. Do not delete the file yet, but updates the
+	  treeview correctly.
+
+2006-10-20  German Poo-Caaman~o  <gpoo@ubiobio.cl>
+
 	* thumbnail-checker.py:
 	* thumbnail-checker.glade: Added delete funcionality.
 
