@@ -92,9 +92,8 @@ class ThumbnailChecker:
 		for ref in refs:
 			path = ref.get_path()
 			iter = model.get_iter(path)
-			file = model.get(iter, 2)[0]
-			# TODO: Still not test, but it should work
-			#os.unlink(os.path.expanduser(file))
+			filename = model.get(iter, 2)[0]
+			os.unlink(os.path.expanduser(filename))
 			model.remove(iter)
 
 	def on_button_stop_clicked(self, button, *args):

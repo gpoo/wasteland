@@ -1,5 +1,10 @@
 2007-04-09  German Poo-Caaman~o  <gpoo@ubiobio.cl>
 
+	* thumbnail-checker.py: Now it's possible to delete files. Before,
+	  it was a simulated.
+
+2007-04-09  German Poo-Caaman~o  <gpoo@ubiobio.cl>
+
 	* thumbnail-checker.py: Fixed behavior of Start/Stop buttons,
 	  and when the task is done.
 
