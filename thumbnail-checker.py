@@ -2,7 +2,7 @@
 
 from gnomevfs import get_local_path_from_uri
 from gc import collect
-from os.path import join, getsize
+import os.path
 
 import gtk
 import gtk.gdk
@@ -124,8 +124,8 @@ class ThumbnailChecker:
 		self.non_fd_iter = self.model.append(None,
                                   ["No Free Desktop compliant", '0', None])
 
-		rootdir = os.path.expanduser('~/.thumbnails')
 		homedir = os.path.expanduser('~')
+		rootdir = os.path.join(homedir, '.thumbnails')
 		for root, dirs, files in os.walk(rootdir):
 			i = 0.0
 
@@ -137,7 +137,7 @@ class ThumbnailChecker:
 			for name in files:
 				i = i + 1.0
 				uri = None
-				filename = join(root, name)
+				filename = os.path.join(root, name)
 
 				self.progressbar.set_fraction(i / len(files))
 				self.progressbar.set_text(text)
@@ -166,10 +166,22 @@ class ThumbnailChecker:
 			self.progress.set_text(text)
 			yield True
 			
-		self.progressbar.set_text('Done')
-		self.progress.set_text('')
+		self.walk_done()
 		yield False
 
+	#def delete_selected_thumbnail(self, treemodel, path, iter):
+	#	file = treemodel.get(iter, 2)[0]
+	#	os.unlink(os.path.expanduser(file))
+	def walk_done(self):
+		gobject.source_remove(self.id)
+		self.progressbar.set_text('Done')
+		self.progress.set_text('')
+		self.button_stop.set_sensitive(False)
+
+	def on_selection_changed(self, selection):
+		has_selection = (selection.count_selected_rows () != 0)
+		self.button_delete.set_sensitive(has_selection)
+	
 	def verify_thumbnail(self, filename):
 		try:
 			pixbuf = gtk.gdk.pixbuf_new_from_file(filename)
@@ -199,7 +211,7 @@ class ThumbnailChecker:
 		counter  = getattr(self, item + '_count')
 		iter = getattr(self, item + '_iter')
 		
-		size = getsize(filename)
+		size = os.path.getsize(filename)
 		sum_size += size
 		counter += 1
 
@@ -212,14 +224,6 @@ class ThumbnailChecker:
 		str_size = bytes_to_string(sum_size)
 		self.model.set(iter, 1, str_size)
 		self.model.set(iter, 0, text % counter)
-
-	#def delete_selected_thumbnail(self, treemodel, path, iter):
-	#	file = treemodel.get(iter, 2)[0]
-	#	os.unlink(os.path.expanduser(file))
-
-	def on_selection_changed(self, selection):
-		has_selection = (selection.count_selected_rows () != 0)
-		self.button_delete.set_sensitive(has_selection)
 	
 if __name__ == "__main__":
 	checker = ThumbnailChecker()

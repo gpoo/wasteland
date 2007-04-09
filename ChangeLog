@@ -1,3 +1,13 @@
+2007-04-09  German Poo-Caaman~o  <gpoo@ubiobio.cl>
+
+	* thumbnail-checker.py: Fixed behavior of Start/Stop buttons,
+	  and when the task is done.
+
+2006-10-21  German Poo-Caaman~o  <gpoo@ubiobio.cl>
+
+	* thumbnail-checker.py: Mixed branches (delete feature and 
+	  a better compute)
+
 2006-10-20  German Poo-Caaman~o  <gpoo@ubiobio.cl>
 
 	* thumbnail-checker.py: Updated the treeview when a file
