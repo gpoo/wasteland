@@ -1,8 +1,0 @@
-# use glob syntax.
-syntax: glob
-*~
-.*.swp
-*.pyc
-
-syntax: regexp
-.*\#.*\#$
