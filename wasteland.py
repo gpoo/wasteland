@@ -28,6 +28,7 @@ gi.require_version('Gtk', '3.0')
 
 from gi.repository import Gtk, GObject, Pango, Gio, GdkPixbuf
 
+
 def bytes_to_string(size):
     """Return a number in a easier way to read"""
 
@@ -56,7 +57,7 @@ class ThumbnailChecker:
 
         builder = Gtk.Builder()
         builder.add_from_file(os.path.join(os.path.dirname(__file__),
-                                       'wasteland.glade'))
+                                           'wasteland.glade'))
         self.model = Gtk.TreeStore(str, str, str)
 
         self.window = builder.get_object('window')
@@ -133,11 +134,14 @@ class ThumbnailChecker:
 
         self.orphan_iter = self.model.append(None, ["Orphans", '0', None])
         self.external_iter = self.model.append(None,
-                                  ["Orphans and/or Externals", '0', None])
+                                               ["Orphans and/or Externals",
+                                                '0', None])
         self.invalid_iter = self.model.append(None,
-                                  ["Invalid (broken image)", '0', None])
+                                              ["Invalid (broken image)",
+                                               '0', None])
         self.non_fd_iter = self.model.append(None,
-                                  ["No Free Desktop compliant", '0', None])
+                                             ["No Free Desktop compliant",
+                                              '0', None])
 
         homedir = os.path.expanduser('~')
         rootdir = os.path.join(homedir, '.thumbnails')
@@ -196,7 +200,7 @@ class ThumbnailChecker:
         self.button_stop.set_sensitive(False)
 
     def on_selection_changed(self, selection):
-        has_selection = (selection.count_selected_rows () != 0)
+        has_selection = (selection.count_selected_rows() != 0)
         self.button_delete.set_sensitive(has_selection)
 
     def verify_thumbnail(self, filename):
