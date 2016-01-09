@@ -23,6 +23,9 @@ from gc import collect
 import os
 import os.path
 
+import gi
+gi.require_version('Gtk', '3.0')
+
 from gi.repository import Gtk, GObject, Pango, Gio, GdkPixbuf
 
 def bytes_to_string(size):
